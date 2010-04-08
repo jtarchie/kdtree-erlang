@@ -95,7 +95,7 @@ near_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when Ad =< 0 ->
 	find_neighbors(Node#node.left, Coords, K, Neighbors, Depth + 1);
 near_neighbors(Node, Coords, K, Neighbors, Depth, _Ad) ->
 	find_neighbors(Node#node.right, Coords, K, Neighbors, Depth + 1).
-far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when length(Neighbors) < K ->
+far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when length(Neighbors) =< K ->
 	if Ad =< 0 -> FarNode = Node#node.right; true -> FarNode = Node#node.left end,
 	find_neighbors(FarNode, Coords, K, Neighbors, Depth + 1);
 far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) ->

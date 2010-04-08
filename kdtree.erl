@@ -1,14 +1,14 @@
 -module(kdtree).
 
--record(point, {id, coords, pos}).
+-record(point, {id, coords}).
 -record(node, {point=#point{}, left = nil, right = nil}).
 -record(neighbor, {id = -1, distance = 0}).
 
--export([create_point/3, build/1, points_from_file/1, build_from_file/1]).
+-export([create_point/2, build/1, points_from_file/1, build_from_file/1]).
 -export([find_neighbors/3, distance/2, neighbors_for_points/3, pretty_print_neighbors_for_points/1]).
 
-create_point(Id, Coords, Pos) ->
-	#point{id=Id, coords=Coords, pos=Pos}.
+create_point(Id, Coords) ->
+	#point{id=Id, coords=Coords}.
 
 for_each_line(Device, Proc, Accum) ->
 	case io:get_line(Device, "") of
@@ -20,15 +20,15 @@ points_from_file(Filename) ->
 	{ok, Device} = file:open(Filename, [read]),
 	for_each_line(Device, fun(Line, Accum) ->
 		[Id, X, Y] = string:tokens(Line, " "),
-		{{X1,_}, {Y1,_}} = {string:to_float(X), string:to_float(Y)},
-		[create_point(Id,[X1,Y1], length(Accum)+1) | Accum]
+		{{X1,_}, {Y1,_},{Id1,_}} = {string:to_float(X), string:to_float(Y), string:to_integer(Id)},
+		[create_point(Id1,[X1,Y1]) | Accum]
 	end, []).
 neighbors_for_points(Points, Tree, K) ->
-	SortedPoints = lists:sort(fun(A,B) -> A#point.pos =< B#point.pos end, Points),
+	SortedPoints = lists:sort(fun(A,B) -> A#point.id =< B#point.id end, Points),
 	PointsNeighbors = lists:map(
 		fun(Point) ->
-			Neighbors = kdtree:find_neighbors(Tree, Point#point.coords, K + 1),
-			lists:sublist(Neighbors, 2, length(Neighbors))
+			[_OriginPoint | Neighbors] = kdtree:find_neighbors(Tree, Point#point.coords, K + 1),
+			Neighbors
 		end,
 		SortedPoints
 	),
@@ -36,8 +36,8 @@ neighbors_for_points(Points, Tree, K) ->
 pretty_print_neighbors_for_points([]) ->
 	ok;
 pretty_print_neighbors_for_points([{Point, PointNeighbors} | Neighbors]) ->
-	io:format("~s ", [Point#point.id]),
-	io:format("~s~n", [string:join(lists:map(fun(PN)->PN#neighbor.id end, PointNeighbors),",")]),
+	io:format("~p ", [Point#point.id]),
+	io:format("~s~n", [string:join(lists:map(fun(PN)-> integer_to_list(PN#neighbor.id) end, PointNeighbors),",")]),
 	pretty_print_neighbors_for_points(Neighbors).
 build_from_file(Filename) ->
 	build(points_from_file(Filename)).
@@ -65,17 +65,15 @@ found_neighbor(Node, Coords, K, Neighbors) when length(Neighbors) < K ->
 		fun(A,B) -> B#neighbor.distance =< A#neighbor.distance end,
 		[#neighbor{id=(Node#node.point)#point.id, distance=D} | Neighbors]
 	);
-found_neighbor(Node, Coords, K, Neighbors) ->
+found_neighbor(Node, Coords, _K, Neighbors) ->
 	D = distance((Node#node.point)#point.coords, Coords),
 	[LastNeighbor | _] = Neighbors,
 	if D < LastNeighbor#neighbor.distance ->
-		lists:sublist(
-			lists:sort(
-				fun(A,B) -> B#neighbor.distance =< A#neighbor.distance end,
-				[#neighbor{id=(Node#node.point)#point.id, distance=D} | Neighbors]
-			),2,
-			K
-		);
+		[_ | NewNeighbors] = 	lists:sort(
+			fun(A,B) -> B#neighbor.distance =< A#neighbor.distance end,
+			[#neighbor{id=(Node#node.point)#point.id, distance=D} | Neighbors]
+		),
+		NewNeighbors;
 	true ->
 		Neighbors	
 	end.

@@ -27,6 +27,7 @@ neighbors_for_points(Points, Tree, K) ->
 	SortedPoints = lists:sort(fun(A,B) -> A#point.id =< B#point.id end, Points),
 	PointsNeighbors = lists:map(
 		fun(Point) ->
+			io:format("~p", [Point#point.id]),
 			[_OriginPoint | Neighbors] = kdtree:find_neighbors(Tree, Point#point.coords, K + 1),
 			Neighbors
 		end,
@@ -69,7 +70,7 @@ found_neighbor(Node, Coords, _K, Neighbors) ->
 	D = distance((Node#node.point)#point.coords, Coords),
 	[LastNeighbor | _] = Neighbors,
 	if D < LastNeighbor#neighbor.distance ->
-		[_ | NewNeighbors] = 	lists:sort(
+		[_ | NewNeighbors] = lists:sort(
 			fun(A,B) -> B#neighbor.distance =< A#neighbor.distance end,
 			[#neighbor{id=(Node#node.point)#point.id, distance=D} | Neighbors]
 		),
@@ -93,14 +94,13 @@ near_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when Ad =< 0 ->
 	find_neighbors(Node#node.left, Coords, K, Neighbors, Depth + 1);
 near_neighbors(Node, Coords, K, Neighbors, Depth, _Ad) ->
 	find_neighbors(Node#node.right, Coords, K, Neighbors, Depth + 1).
-far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when length(Neighbors) =< K ->
-	if Ad =< 0 -> FarNode = Node#node.right; true -> FarNode = Node#node.left end,
-	find_neighbors(FarNode, Coords, K, Neighbors, Depth + 1);
-far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) ->
-	[LastNeighbor | _] = Neighbors,
-	if Ad =< 0 -> FarNode = Node#node.right; true -> FarNode = Node#node.left end,
-	if (Ad * Ad) < LastNeighbor#neighbor.distance ->
-		find_neighbors(FarNode, Coords, K, Neighbors, Depth + 1);
-	true ->
-		Neighbors
-	end.
+far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when length(Neighbors) =< K andalso Ad =< 0 ->
+	find_neighbors(Node#node.right, Coords, K, Neighbors, Depth + 1);
+far_neighbors(Node, Coords, K, Neighbors, Depth, Ad) when length(Neighbors) =< K andalso Ad > 0 ->
+	find_neighbors(Node#node.left, Coords, K, Neighbors, Depth + 1);
+far_neighbors(Node, Coords, K, [LastNeighbor | Neighbors], Depth, Ad) when ((Ad * Ad) < LastNeighbor#neighbor.distance) andalso (Ad =< 0) ->
+	find_neighbors(Node#node.right, Coords, K, [LastNeighbor | Neighbors], Depth + 1);
+far_neighbors(Node, Coords, K, [LastNeighbor | Neighbors], Depth, Ad) when ((Ad * Ad) < LastNeighbor#neighbor.distance) andalso (Ad > 0) ->
+	find_neighbors(Node#node.left, Coords, K, [LastNeighbor | Neighbors], Depth + 1);
+far_neighbors(_Node, _Coords, _K, Neighbors, _Depth, _Ad) ->
+	Neighbors.

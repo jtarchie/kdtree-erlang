@@ -1,0 +1,13 @@
+#!/usr/bin/env escript
+
+main([Filename]) ->
+	run(Filename);
+main(_) ->
+	run("world.txt").
+
+run(Filename) ->
+	io:format("Opening map '~s'.~n", [Filename]),
+	Points = kdtree:points_from_file(Filename),
+	Tree = kdtree:build(Points),
+	Neighbors = kdtree:neighbors_for_points(Points, Tree, 3),
+	kdtree:pretty_print_neighbors_for_points(Neighbors).

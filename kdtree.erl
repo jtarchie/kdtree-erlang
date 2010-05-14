@@ -27,7 +27,7 @@ neighbors_for_points(Points, Tree, K) ->
 	SortedPoints = lists:sort(fun(A,B) -> A#point.id =< B#point.id end, Points),
 	PointsNeighbors = lists:map(
 		fun(Point) ->
-			io:format("~p", [Point#point.id]),
+			%% io:format("~p", [Point#point.id]),
 			[_OriginPoint | Neighbors] = kdtree:find_neighbors(Tree, Point#point.coords, K + 1),
 			Neighbors
 		end,
